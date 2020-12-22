@@ -13,6 +13,7 @@ class Restauration:
     def lecture_quotidienne(self):
         with open('quotidienne') as resto_quot:
             self.liste = dict(enumerate(line.strip() for line in resto_quot))
+            print(" N°   Jour  Date        Heure      Complète / Incrementielle")
         for i in range(0, len(self.liste)):
 
             self.jour = str(self.liste[i]).split("_")
@@ -42,10 +43,9 @@ class Restauration:
                 quit()
 
         print("on fait le job")
-        self.routine_resto()
+        self.routine_resto_complete()
 
-
-    def routine_resto(self):
+    def routine_resto_complete(self):
         self.dic_config = {}
         with open("config.ini", "r") as confini:
             for ligne in confini:
@@ -56,5 +56,6 @@ class Restauration:
         for y in range(0, int(self.key) + 1):
             print(self.dic_config["Dossier_cible"] + "/" + str(self.jour[3]) + "/" + str(self.jour[1]) + "/"
                   + str(self.liste[y]))
+
 
 test = Restauration()

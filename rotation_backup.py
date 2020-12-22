@@ -48,7 +48,6 @@ class GestionFichier:
             confini.write(contenu)
             confini.close()
 
-
     def lecture_derniere_exec(self):
 
         with open("derniere_execution", "r") as derniere_exec:
@@ -154,6 +153,7 @@ class GestionFichier:
             print("on créé un backup complet + snar dans le dossier jour local")
             self.tar()
             print("on copie le backup dans le dossier de la semaine pour rotation")
+            self.hebdomadaire()
 
         if self.type == "I":
             # Sauvegarde incrementielle
@@ -181,9 +181,13 @@ class GestionFichier:
 
     def tar(self):
 
-        commande = "tar -c --listed-incremental={}/{} --file={}{} {}"\
+        commande = "tar -cp --listed-incremental={}/{} --file={}{} {}"\
             .format(self.dossier_backup, self.fichier_snar, self.path_du_jour, self.nom_de_fichier, self.dossier_source)
         print(commande)
+
+    def hebdomadaire(self):
+        if not os.path.isdir(self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire"):
+            print("le dossier hebdomadaire n'existe pas")
 
     def dump_mysql(self):
         if self.type == "I":
