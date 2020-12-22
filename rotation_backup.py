@@ -9,6 +9,7 @@ locale.setlocale(locale.LC_TIME, '')
 # TODO: gérer un fichier pour la restauration dans le dossier source quotidienne
 # TODO: gérer la sauvegare complète et incrémentielle de mariadb avec maribackup
 # TODO: vérifier la sauvegarde complète et générer les fichiers tar correspondants
+# TODO : ajouter la préservation des acl sur les fichiers
 
 
 class GestionFichier:
@@ -32,10 +33,21 @@ class GestionFichier:
         self.dossier_annee = str(annee)
         self.fichier_snar = "backup.snar"
         self.dossier_source = "Dossier_Source"
+        self.config_ini()
         self.path_local = os.getcwd()
         self.dic_rotation = {}
         self.derniere_execution()
         self.creation_fichier()
+
+    def config_ini(self):
+        if not os.path.isfile("config.ini"):
+            contenu = "Dossier_cible=" + self.dossier_backup + "\nDossier_annee=" + str(self.dossier_annee)
+            confini = open("config.ini", "w")
+
+            print("le fichier n'existe pas")
+            confini.write(contenu)
+            confini.close()
+
 
     def lecture_derniere_exec(self):
 
@@ -204,7 +216,7 @@ class GestionFichier:
 
     def creation_fichier(self):
 
-        contenu_fichier = self.nom_de_fichier +"\n"
+        contenu_fichier = self.nom_de_fichier + "\n"
         fichier_resto = open("quotidienne", "a")
         fichier_resto.write(contenu_fichier)
         fichier_resto.close()
