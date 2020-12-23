@@ -66,8 +66,6 @@ class Restauration:
                 onyva = False
             if confirmation == "N":
                 quit()
-            else:
-                print("saisie non valide")
 
         for y in range(0, int(self.key) + 1):
             print(self.dic_config["Dossier_cible"] + "/" + str(self.jour[3]) + "/" + str(self.jour[1]) + "/"
