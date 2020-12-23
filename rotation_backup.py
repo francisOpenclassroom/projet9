@@ -4,7 +4,9 @@ import locale
 import datetime
 
 import os
-locale.setlocale(locale.LC_TIME, '')
+
+locale.setlocale(locale.LC_ALL, 'fr_FR')
+
 
 # TODO: gérer un fichier pour la restauration dans le dossier source quotidienne
 # TODO: gérer la sauvegare complète et incrémentielle de mariadb avec maribackup

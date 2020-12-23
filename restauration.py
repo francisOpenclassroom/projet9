@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import locale
+
+locale.setlocale(locale.LC_TIME, 'fr_FR')
+
 
 class Restauration:
     def __init__(self):
@@ -43,6 +47,7 @@ class Restauration:
                 quit()
 
         print("on fait le job")
+
         self.routine_resto_complete()
 
     def routine_resto_complete(self):
@@ -52,6 +57,17 @@ class Restauration:
                 key, valeur = ligne.strip().split("=")
                 self.dic_config[key] = valeur
                 self.dic_config.update(self.dic_config)
+
+        onyva = True
+        while onyva:
+            print("Restauration du fichier : " + str(self.liste[int(self.key)]))
+            confirmation = input("Etes vous sur de vouloir continuer  O/N - ? : ")
+            if confirmation == "O":
+                onyva = False
+            if confirmation == "N":
+                quit()
+            else:
+                print("saisie non valide")
 
         for y in range(0, int(self.key) + 1):
             print(self.dic_config["Dossier_cible"] + "/" + str(self.jour[3]) + "/" + str(self.jour[1]) + "/"
