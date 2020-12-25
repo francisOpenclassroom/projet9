@@ -2,11 +2,15 @@
 
 import locale
 import datetime
-
+import sys
 import os
+from itertools import islice
 
-locale.setlocale(locale.LC_ALL, 'fr_FR')
+if sys.platform.startswith("darwin"):
 
+    locale.setlocale(locale.LC_ALL, 'fr_FR')
+else:
+    locale.setlocale(locale.LC_ALL, 'fr_FR.utf8')
 
 # TODO: gérer un fichier pour la restauration dans le dossier source quotidienne
 # TODO: gérer la sauvegare complète et incrémentielle de mariadb avec maribackup
@@ -34,7 +38,8 @@ class GestionFichier:
         self.dossier_backup = "backup"
         self.dossier_annee = str(annee)
         self.fichier_snar = "backup.snar"
-        self.dossier_source = "Dossier_Source"
+        self.dossier_source = "/var/www/html/wordpress"
+        self.mariabd_full_path = ""
         self.config_ini()
         self.path_local = os.getcwd()
         self.dic_rotation = {}
@@ -141,11 +146,12 @@ class GestionFichier:
     def backup(self):
         print()
         self.lecture_derniere_exec()
+
         if self.type == "C" and self.indice == 1:
 
             try:
                 os.remove(self.dossier_backup + "/" + self.fichier_snar)
-            except FileNotFoundError:
+            except (OSError, Exception):
                 self.message_log = "Erreur :  le fichier : " + self.fichier_snar + " est absent ou inacessible"
                 print(self.message_log)
                 self.fichier_log()
@@ -154,6 +160,7 @@ class GestionFichier:
             self.suppression_fichiers()
             print("on créé un backup complet + snar dans le dossier jour local")
             self.tar()
+            self.mariadb_full()
             print("on copie le backup dans le dossier de la semaine pour rotation")
             self.hebdomadaire()
 
@@ -166,7 +173,7 @@ class GestionFichier:
                                    + self.nom_de_fichier
                 self.fichier_log()
                 self.tar()
-                self.dump_mysql()
+                self.mariadb_increment()
             else:
                 # sauvegarde incrementielle
                 self.path_du_jour = self.dossier_backup + "/" + str(self.dossier_annee) + "/" + "quotidienne/" \
@@ -178,7 +185,7 @@ class GestionFichier:
                 self.dossier_local()
                 self.suppression_fichiers()
                 self.tar()
-                self.dump_mysql()
+                self.mariadb_increment()
             print("on copie l'increment du jour")
 
     def tar(self):
@@ -191,11 +198,27 @@ class GestionFichier:
         if not os.path.isdir(self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire"):
             print("le dossier hebdomadaire n'existe pas")
 
-    def dump_mysql(self):
+    def mariadb_increment(self):
         if self.type == "I":
             print("sauvegarde incrementielle mariadb")
-        else:
-            print("sauvegarde complete mariadb")
+        self.mariadb_path_to_full()
+        commande = "mariabackup --backup --target_dir={}mariadb_inc/ --incremental-basedir={} --user=root --password=" \
+                   "francis1965".format(self.path_du_jour, self.mariabd_full_path)
+        print(commande)
+
+    def mariadb_full(self):
+        print("Sauvegarde Mariadb FULL")
+        commande = "mariabackup --backup --target-dir={}mariadb_full/ --user=root --password=francis1965"\
+            .format(self.path_du_jour)
+        print(commande)
+
+    def mariadb_path_to_full(self):
+        with open('quotidienne') as fichier_quot:
+            full_bckup = list(islice(fichier_quot, 1))
+            la_liste = (str(full_bckup[0]).split("_"))
+            self.mariabd_full_path = self.dossier_backup + "/" + str(self.dossier_annee) + "/" + "quotidienne" + "/"\
+                                     + str(la_liste[1]) + "/mariadb_full/"
+            print(self.mariabd_full_path)
 
     def dossier_local(self):
         self.path_du_jour = self.dossier_backup + "/" + str(self.dossier_annee) + "/" + "quotidienne/"\
