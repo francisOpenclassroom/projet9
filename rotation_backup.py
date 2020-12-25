@@ -12,7 +12,7 @@ if sys.platform.startswith("darwin"):
 else:
     locale.setlocale(locale.LC_ALL, 'fr_FR.utf8')
 
-# TODO: gérer un fichier pour la restauration dans le dossier source quotidienne
+# TODO: gérer un fichier pour la restauration dans le dossier source quotidienne - Fait ajouter les dossiers sources
 # TODO: gérer la sauvegare complète et incrémentielle de mariadb avec maribackup
 # TODO: vérifier la sauvegarde complète et générer les fichiers tar correspondants
 # TODO : ajouter la préservation des acl sur les fichiers
