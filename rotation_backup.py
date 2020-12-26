@@ -14,6 +14,7 @@ import sys
 import os
 import shutil
 from itertools import islice
+import pysftp
 
 if sys.platform.startswith("darwin"):
 
@@ -46,17 +47,21 @@ class GestionFichier:
         self.path_dossier_config = ""
         self.dossier_annee = str(annee)
         self.fichier_snar = "backup.snar"
-        self.dossier_source = "/var/www/html/wordpress"
+        self.dossier_source = "/var/www/html/www.projet9-wordpress.com " \
+                              "/etc/apache2/sites-available/www.projet9-wordpress.com.conf " \
+                              "/etc/apache2/sites-enabled/www.projet9-wordpress.com.conf"
         self.mariabd_full_path = ""
+        self.path_hebdomadaire = ""
         self.dic_rotation = {}
         self.path_local = os.getcwd()
-        self.db_user = "francis"
+        self.db_user = "root"
         self.db_passwd = "francis1965"
 
         # Exécution des fonctions de base
         self.creation_dossier_config()
         self.config_ini()
         self.derniere_execution()
+        self.copy_pysftp()
 
 # Creation des dossiers de configuration
     def creation_dossier_config(self):
@@ -179,7 +184,6 @@ class GestionFichier:
             self.suppression_fichiers()
             self.tar()
             self.mariadb_full()
-            print("on copie le backup dans le dossier de la semaine pour rotation")
             self.hebdomadaire()
 
         if self.type == "I":
@@ -208,38 +212,67 @@ class GestionFichier:
 
     def tar(self):
 
-        commande = "tar -cp --listed-incremental={}/{} --file={}{} {}"\
+        commande = "tar -cpz --listed-incremental={}/{} --file={}{} {} >/dev/null 2>&1"\
             .format(self.dossier_backup, self.fichier_snar, self.path_du_jour, self.nom_de_fichier, self.dossier_source)
-        print(commande)
+
         if sys.platform.startswith("linux"):
             os.system(commande)
+        else:
+            print(commande)
 
     def hebdomadaire(self):
         if not os.path.isdir(self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire"):
-            print("le dossier hebdomadaire n'existe pas")
+            os.makedirs(self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire/")
+
+        self.path_hebdomadaire = (self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire/"
+                                 + "S" + str(self.numero_semaine) + "/")
+        os.makedirs(self.path_hebdomadaire)
+        self.copy_archives()
+
+    def copy_archives(self):
+        commande = "tar -cpz --file {}mariadb_full_{}.tar.gz {}mariadb_full"\
+            .format(self.path_hebdomadaire, self.format_date, self.path_du_jour)
+        if sys.platform.startswith("linux"):
+            shutil.copyfile(self.path_du_jour + self.nom_de_fichier, self.path_hebdomadaire + self.nom_de_fichier)
+            os.system(commande)
+
+        else:
+            print("Copie de {}{} vers {}".format(self.path_du_jour, self.nom_de_fichier, self.path_hebdomadaire))
+            print(commande)
+        self.liste_hebdo()
+
+    def liste_hebdo(self):
+        contenu_hebdo = "{}mariadb_full_{}.tar.gz".format(self.path_hebdomadaire, self.format_date) + ","\
+                        + self.path_hebdomadaire + self.nom_de_fichier
+        resto_hebdo = open(self.path_dossier_config + "hebdomadaire", "a")
+        resto_hebdo.write(contenu_hebdo)
+        resto_hebdo.close()
 
     def mariadb_increment(self):
         self.mariadb_path_to_full()
         commande = "mariabackup --backup --target_dir={}mariadb_inc{}/ --incremental-basedir={} --user={}" \
-                   " --password={}".format(self.path_du_jour, self.indice_jour, self.mariabd_full_path, self.db_user,
-                                           self.db_passwd)
+                   " --password={}  >/dev/null 2>&1".format(self.path_du_jour, self.indice_jour,
+                                                            self.mariabd_full_path, self.db_user, self.db_passwd)
         self.message_log = "Information : Creation d'un backup incremental mariadb dans mariadb_inc{}"\
             .format(self.indice_jour)
         self.fichier_log()
 
-        print(commande)
         if sys.platform.startswith("linux"):
             os.system(commande)
+        else:
+            print(commande)
 
     def mariadb_full(self):
         self.mariadb_path_to_full()
-        commande = "mariabackup --backup --target-dir={}mariadb_full/ --user={} --password={}"\
+        commande = "mariabackup --backup --target-dir={}mariadb_full/ --user={} --password={} >/dev/null 2>&1"\
             .format(self.path_du_jour, self.db_user, self.db_passwd)
         self.message_log = "Information : Creation d'un backup full mariadb dans {}".format(self.mariabd_full_path)
         self.fichier_log()
-        print(commande)
+
         if sys.platform.startswith("linux"):
             os.system(commande)
+        else:
+            print(commande)
 
     def mariadb_path_to_full(self):
 
@@ -281,6 +314,10 @@ class GestionFichier:
         fichier_resto = open(self.path_dossier_config + "quotidienne", "a")
         fichier_resto.write(contenu_fichier)
         fichier_resto.close()
+
+    def copy_pysftp(self):
+
+        sftp = pysftp.Connection('192.168.1.60', username='root', password='francis1965')
 
 
 test = GestionFichier()
