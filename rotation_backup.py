@@ -287,6 +287,7 @@ class GestionFichier:
                             + self.jour_semaine + "/"
         try:
             os.makedirs(self.path_du_jour)
+            self.dossier_distant()
             self.message_log = "Information : creation du dossier " + self.jour_semaine
             self.fichier_log()
         except OSError:
@@ -315,9 +316,17 @@ class GestionFichier:
         fichier_resto.write(contenu_fichier)
         fichier_resto.close()
 
+    def dossier_distant(self):
+        print(self.path_du_jour)
+        sftp = pysftp.Connection('192.168.1.60', username='root', password='francis1965')
+        sftp.makedirs("/var/" + self.path_du_jour)
+        sftp.close()
+
     def copy_pysftp(self):
 
         sftp = pysftp.Connection('192.168.1.60', username='root', password='francis1965')
+
+        sftp.close()
 
 
 test = GestionFichier()
