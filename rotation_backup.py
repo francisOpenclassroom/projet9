@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
 
+# TODO: gérer un fichier pour la restauration dans le dossier source quotidienne - Fait ajouter les dossiers sources
+# TODO: gérer la sauvegare complète et incrémentielle de mariadb avec maribackup
+# TODO: vérifier la sauvegarde complète et générer les fichiers tar correspondants
+# TODO : ajouter la préservation des acl sur les fichiers
+# TODO : Ajouter le suppression des dossiers de backup de mariadb full et incremental
+# TODO : ne pas oublier de copier les fichiers des configs pour la restauration !
+
+
 import locale
 import datetime
 import sys
@@ -11,11 +19,6 @@ if sys.platform.startswith("darwin"):
     locale.setlocale(locale.LC_ALL, 'fr_FR')
 else:
     locale.setlocale(locale.LC_ALL, 'fr_FR.utf8')
-
-# TODO: gérer un fichier pour la restauration dans le dossier source quotidienne - Fait ajouter les dossiers sources
-# TODO: gérer la sauvegare complète et incrémentielle de mariadb avec maribackup
-# TODO: vérifier la sauvegarde complète et générer les fichiers tar correspondants
-# TODO : ajouter la préservation des acl sur les fichiers
 
 
 class GestionFichier:
@@ -193,6 +196,8 @@ class GestionFichier:
         commande = "tar -cp --listed-incremental={}/{} --file={}{} {}"\
             .format(self.dossier_backup, self.fichier_snar, self.path_du_jour, self.nom_de_fichier, self.dossier_source)
         print(commande)
+        if sys.platform.startswith("linux"):
+            os.system(commande)
 
     def hebdomadaire(self):
         if not os.path.isdir(self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire"):
@@ -202,15 +207,19 @@ class GestionFichier:
         if self.type == "I":
             print("sauvegarde incrementielle mariadb")
         self.mariadb_path_to_full()
-        commande = "mariabackup --backup --target_dir={}mariadb_inc/ --incremental-basedir={} --user=root --password=" \
-                   "francis1965".format(self.path_du_jour, self.mariabd_full_path)
+        commande = "mariabackup --backup --target_dir={}mariadb_inc{}/ --incremental-basedir={} --user=root --password=" \
+                   "francis1965".format(self.path_du_jour, self.indice_jour, self.mariabd_full_path)
         print(commande)
+        if sys.platform.startswith("linux"):
+            os.system(commande)
 
     def mariadb_full(self):
         print("Sauvegarde Mariadb FULL")
         commande = "mariabackup --backup --target-dir={}mariadb_full/ --user=root --password=francis1965"\
             .format(self.path_du_jour)
         print(commande)
+        if sys.platform.startswith("linux"):
+            os.system(commande)
 
     def mariadb_path_to_full(self):
         with open('quotidienne') as fichier_quot:
