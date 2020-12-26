@@ -15,6 +15,7 @@ class Restauration:
         self.dic_config = {}
 
     def lecture_quotidienne(self):
+
         with open('quotidienne') as resto_quot:
             self.liste = dict(enumerate(line.strip() for line in resto_quot))
             print(" N°   Jour  Date        Heure      Complète / Incrementielle")

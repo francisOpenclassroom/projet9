@@ -12,6 +12,7 @@ import locale
 import datetime
 import sys
 import os
+import shutil
 from itertools import islice
 
 if sys.platform.startswith("darwin"):
@@ -23,6 +24,8 @@ else:
 
 class GestionFichier:
     def __init__(self):
+
+        # Déclaration des variables
         self.nom_de_fichier = ""
         self.jour = datetime.datetime.now()
         self.jour_de_lannee = datetime.datetime.now().timetuple().tm_yday
@@ -39,35 +42,48 @@ class GestionFichier:
         self.path_du_jour = ""
         self.message_log = ""
         self.dossier_backup = "backup"
+        self.dossier_config = "config"
+        self.path_dossier_config = ""
         self.dossier_annee = str(annee)
         self.fichier_snar = "backup.snar"
         self.dossier_source = "/var/www/html/wordpress"
         self.mariabd_full_path = ""
-        self.config_ini()
-        self.path_local = os.getcwd()
         self.dic_rotation = {}
+        self.path_local = os.getcwd()
+        self.db_user = "francis"
+        self.db_passwd = "francis1965"
+
+        # Exécution des fonctions de base
+        self.creation_dossier_config()
+        self.config_ini()
         self.derniere_execution()
-        self.creation_fichier()
 
+# Creation des dossiers de configuration
+    def creation_dossier_config(self):
+        self.path_dossier_config = self.dossier_backup + "/" + self.dossier_config + "/"
+        if not os.path.isdir(self.path_dossier_config):
+            os.makedirs(self.path_dossier_config)
+
+# Creation du fichier config.ini pour la restauration
     def config_ini(self):
-        if not os.path.isfile("config.ini"):
-            contenu = "Dossier_cible=" + self.dossier_backup + "\nDossier_annee=" + str(self.dossier_annee)
-            confini = open("config.ini", "w")
-
-            print("le fichier n'existe pas")
+        if not os.path.isfile(self.path_dossier_config + "config.ini"):
+            contenu = "Dossier_cible=" + self.dossier_backup + "/" + "\nDossier_annee=" + str(self.dossier_annee) + \
+                      "\nDossier_config=" + self.path_dossier_config + "\nDB_User=" + self.db_user + "\nDB_Password="\
+                      + self.db_passwd
+            confini = open(self.path_dossier_config + "config.ini", "w")
             confini.write(contenu)
             confini.close()
 
     def lecture_derniere_exec(self):
 
-        with open("derniere_execution", "r") as derniere_exec:
+        with open(self.path_dossier_config + "derniere_execution", "r") as derniere_exec:
             for ligne in derniere_exec:
                 key, valeur = ligne.strip().split("=")
                 self.dic_rotation[key] = valeur
                 self.dic_rotation.update(self.dic_rotation)
 
     def derniere_execution(self):
-        if os.path.isfile("derniere_execution"):
+        if os.path.isfile(self.path_dossier_config + "derniere_execution"):
             self.dic_rotation = {}
             self.lecture_derniere_exec()
             self.exec_jour = int(self.dic_rotation["jour_de_lannee"])
@@ -79,7 +95,7 @@ class GestionFichier:
                 self.indice_jour = (int(self.dic_rotation["indice_jour"]) + 1)
                 self.type = "I"
                 self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + str(self.indice_jour) + "_"\
-                                      + str(self.format_date)
+                                      + str(self.format_date) + ".tar.gz"
                 self.fichier_derniere_exec()
 
             if self.jour_de_lannee - self.exec_jour == 1:
@@ -93,12 +109,11 @@ class GestionFichier:
                     self.type = "I"
 
                 self.indice_jour = 0
-                self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)
-                print("le nome de fichier est " + self.nom_de_fichier)
+                self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)\
+                                      + ".tar.gz"
                 self.fichier_derniere_exec()
 
             if 1 < self.jour_de_lannee - self.exec_jour <= 7:
-                print("plus d'un jour mais dans la meme semaine")
 
                 decalage = self.jour_de_lannee - self.exec_jour
                 self.indice_jour = 0
@@ -110,8 +125,8 @@ class GestionFichier:
                     self.indice = 1
                     self.type = "C"
 
-                self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)
-                print(self.nom_de_fichier)
+                self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)\
+                                      + ".tar.gz"
                 self.fichier_derniere_exec()
 
             if self.jour_de_lannee - self.exec_jour > 7:
@@ -120,13 +135,14 @@ class GestionFichier:
                 self.type = "C"
                 self.indice = 1
                 self.indice_jour = 0
-                self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)
-                print(self.nom_de_fichier)
+                self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)\
+                                      + ".tar.gz"
                 self.fichier_derniere_exec()
         else:
             self.indice = 1
             self.type = "C"
-            self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)
+            self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)\
+                                  + ".tar.gz"
             self.fichier_derniere_exec()
 
     def fichier_derniere_exec(self):
@@ -135,19 +151,19 @@ class GestionFichier:
                   + str(self.numero_semaine) + "\nNo_jour_semaine=" + str(self.numero_jour_semaine) + \
                   "\nindice="+str(self.indice) + "\nindice_jour=" + str(self.indice_jour) + "\ntype=" + self.type
 
-        derniere_exec = open("derniere_execution", "w")
+        derniere_exec = open(self.path_dossier_config + "derniere_execution", "w")
         derniere_exec.write(contenu)
         derniere_exec.close()
         self.backup()
 
     def fichier_log(self):
         self.message_log = self.format_date + " - " + self.message_log
-        fichier_log = open("backup.log", "a")
+        fichier_log = open(self.path_dossier_config + "backup.log", "a")
         fichier_log.write(self.message_log + "\n")
         fichier_log.close()
 
     def backup(self):
-        print()
+        self.creation_fichier()
         self.lecture_derniere_exec()
 
         if self.type == "C" and self.indice == 1:
@@ -155,13 +171,12 @@ class GestionFichier:
             try:
                 os.remove(self.dossier_backup + "/" + self.fichier_snar)
             except (OSError, Exception):
-                self.message_log = "Erreur :  le fichier : " + self.fichier_snar + " est absent ou inacessible"
-                print(self.message_log)
+                self.message_log = "Avertissement :  le fichier : " + self.fichier_snar + \
+                                   " est absent ou inacessible - Premiere exécution ?"
                 self.fichier_log()
 
             self.dossier_local()
             self.suppression_fichiers()
-            print("on créé un backup complet + snar dans le dossier jour local")
             self.tar()
             self.mariadb_full()
             print("on copie le backup dans le dossier de la semaine pour rotation")
@@ -204,30 +219,35 @@ class GestionFichier:
             print("le dossier hebdomadaire n'existe pas")
 
     def mariadb_increment(self):
-        if self.type == "I":
-            print("sauvegarde incrementielle mariadb")
         self.mariadb_path_to_full()
-        commande = "mariabackup --backup --target_dir={}mariadb_inc{}/ --incremental-basedir={} --user=root --password=" \
-                   "francis1965".format(self.path_du_jour, self.indice_jour, self.mariabd_full_path)
+        commande = "mariabackup --backup --target_dir={}mariadb_inc{}/ --incremental-basedir={} --user={}" \
+                   " --password={}".format(self.path_du_jour, self.indice_jour, self.mariabd_full_path, self.db_user,
+                                           self.db_passwd)
+        self.message_log = "Information : Creation d'un backup incremental mariadb dans mariadb_inc{}"\
+            .format(self.indice_jour)
+        self.fichier_log()
+
         print(commande)
         if sys.platform.startswith("linux"):
             os.system(commande)
 
     def mariadb_full(self):
-        print("Sauvegarde Mariadb FULL")
-        commande = "mariabackup --backup --target-dir={}mariadb_full/ --user=root --password=francis1965"\
-            .format(self.path_du_jour)
+        self.mariadb_path_to_full()
+        commande = "mariabackup --backup --target-dir={}mariadb_full/ --user={} --password={}"\
+            .format(self.path_du_jour, self.db_user, self.db_passwd)
+        self.message_log = "Information : Creation d'un backup full mariadb dans {}".format(self.mariabd_full_path)
+        self.fichier_log()
         print(commande)
         if sys.platform.startswith("linux"):
             os.system(commande)
 
     def mariadb_path_to_full(self):
-        with open('quotidienne') as fichier_quot:
+
+        with open(self.path_dossier_config + "quotidienne") as fichier_quot:
             full_bckup = list(islice(fichier_quot, 1))
             la_liste = (str(full_bckup[0]).split("_"))
             self.mariabd_full_path = self.dossier_backup + "/" + str(self.dossier_annee) + "/" + "quotidienne" + "/"\
                                      + str(la_liste[1]) + "/mariadb_full/"
-            print(self.mariabd_full_path)
 
     def dossier_local(self):
         self.path_du_jour = self.dossier_backup + "/" + str(self.dossier_annee) + "/" + "quotidienne/"\
@@ -243,19 +263,22 @@ class GestionFichier:
                 self.fichier_log()
 
     def suppression_fichiers(self):
-        print(self.path_du_jour)
-
+        pattern_dossier = "mariadb_"
+        pattern_fichier = "sauv_"
         try:
-            for fichier in os.listdir(self.path_du_jour):
-                os.remove(self.path_du_jour + fichier)
+            for element in os.listdir(self.path_du_jour):
+                if pattern_fichier in element:
+                    os.remove(self.path_du_jour + element)
+                if pattern_dossier in element:
+                    shutil.rmtree(self.path_du_jour + element)
+
         except FileNotFoundError:
             self.message_log = "Erreur : Le dossier " + self.path_du_jour + " n'existe pas ou n'est pas accessible"
             self.fichier_log()
 
     def creation_fichier(self):
-
         contenu_fichier = self.nom_de_fichier + "\n"
-        fichier_resto = open("quotidienne", "a")
+        fichier_resto = open(self.path_dossier_config + "quotidienne", "a")
         fichier_resto.write(contenu_fichier)
         fichier_resto.close()
 
