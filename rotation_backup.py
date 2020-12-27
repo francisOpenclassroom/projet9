@@ -50,6 +50,7 @@ class GestionFichier:
         self.dossier_source = "/var/www/html/www.projet9-wordpress.com " \
                               "/etc/apache2/sites-available/www.projet9-wordpress.com.conf " \
                               "/etc/apache2/sites-enabled/www.projet9-wordpress.com.conf"
+        self.remote_base = "/var/backup/"
         self.mariabd_full_path = ""
         self.path_hebdomadaire = ""
         self.dic_rotation = {}
@@ -66,6 +67,7 @@ class GestionFichier:
         self.fichier_users()
         self.config_ini()
         self.derniere_execution()
+        self.copy_pysftp()
 
 # Creation des dossiers de configuration
     def creation_dossier_config(self):
@@ -310,7 +312,7 @@ class GestionFichier:
                             + self.jour_semaine + "/"
         try:
             os.makedirs(self.path_du_jour)
-            self.dossier_distant()
+            #self.dossier_distant()
             self.message_log = "Information : creation du dossier " + self.jour_semaine
             self.fichier_log()
         except OSError:
@@ -342,13 +344,15 @@ class GestionFichier:
     def dossier_distant(self):
         print(self.path_du_jour)
         sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
-        sftp.makedirs("/var/" + self.path_du_jour)
+        sftp.makedirs(self.remote_base + self.path_du_jour)
         sftp.close()
+        self.copy_pysftp()
 
     def copy_pysftp(self):
 
         sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
-
+        print(self.dossier_backup)
+        sftp.put_r(self.dossier_backup, self.remote_base, preserve_mtime=True)
         sftp.close()
 
     def initialisation(self):
