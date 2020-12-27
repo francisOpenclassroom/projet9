@@ -15,6 +15,7 @@ import os
 import shutil
 from itertools import islice
 import pysftp
+import paramiko
 
 if sys.platform.startswith("darwin"):
 
@@ -52,6 +53,7 @@ class GestionFichier:
                               "/etc/apache2/sites-enabled/www.projet9-wordpress.com.conf"
         self.remote_base = "/var/backup/"
         self.mariabd_full_path = ""
+        self.nom_dir_mariabd = ""
         self.path_hebdomadaire = ""
         self.dic_rotation = {}
         self.dic_users = {}
@@ -61,6 +63,7 @@ class GestionFichier:
         self.login_user = ""
         self.login_passwd = ""
         self.host_address = ""
+        self.host_port = 22
 
         # Exécution des fonctions de base
         self.creation_dossier_config()
@@ -77,8 +80,7 @@ class GestionFichier:
 
     def fichier_users(self):
         if not os.path.isfile("users.ini"):
-            contenu = "Login_user=\nLogin_passwd=\nDB_user=\nDB_passwd=\nHost_address="
-            print(contenu)
+            contenu = "Login_user=\nLogin_passwd=\nDB_user=\nDB_passwd=\nHost_address=\nHost_port="
             userini = open("users.ini", "w")
             userini.write(contenu)
             userini.close()
@@ -93,13 +95,13 @@ class GestionFichier:
             self.login_user = self.dic_users["Login_user"]
             self.login_passwd = self.dic_users["Login_passwd"]
             self.host_address = self.dic_users["Host_address"]
+            self.host_port = self.dic_users["Host_port"]
 
 # Creation du fichier config.ini pour la restauration
     def config_ini(self):
         if not os.path.isfile(self.path_dossier_config + "config.ini"):
             contenu = "Dossier_cible=" + self.dossier_backup + "/" + "\nDossier_annee=" + str(self.dossier_annee) + \
-                      "\nDossier_config=" + self.path_dossier_config + "\nDB_User=" + self.db_user + "\nDB_Password="\
-                      + self.db_passwd
+                      "\nDossier_config=" + self.path_dossier_config
             confini = open(self.path_dossier_config + "config.ini", "w")
             confini.write(contenu)
             confini.close()
@@ -141,6 +143,7 @@ class GestionFichier:
                 self.indice_jour = 0
                 self.nom_de_fichier = "sauv_" + str(self.jour_semaine) + "_" + self.type + "_" + str(self.format_date)\
                                       + ".tar.gz"
+                self.nom_dir_mariabd = "{}mariadb_full/".format(self.path_du_jour)
                 self.fichier_derniere_exec()
 
             if 1 < self.jour_de_lannee - self.exec_jour <= 7:
@@ -193,7 +196,7 @@ class GestionFichier:
         fichier_log.close()
 
     def backup(self):
-        self.creation_fichier()
+        self.creation_fichier_quot()
         self.lecture_derniere_exec()
 
         if self.type == "C" and self.indice == 1:
@@ -218,6 +221,8 @@ class GestionFichier:
                 self.dossier_local()
                 self.message_log = "Avertissement : Sauvegarde incrementielle le même jour: " + self.jour_semaine + "/"\
                                    + self.nom_de_fichier
+                self.nom_dir_mariabd = "{}mariadb_inc{}/\n".format(self.path_du_jour, self.indice_jour)
+                self.creation_fichier_maria()
                 self.fichier_log()
                 self.tar()
                 self.mariadb_increment()
@@ -227,7 +232,8 @@ class GestionFichier:
                                     + self.jour_semaine + "/"
                 self.message_log = "Information : Sauvegarde incrementielle : " + self.jour_semaine + "/" \
                                    + self.nom_de_fichier
-                print("dans backup : " + self.nom_de_fichier)
+                self.nom_dir_mariabd = "{}mariadb_inc/\n".format(self.path_du_jour)
+                self.creation_fichier_maria()
                 self.fichier_log()
                 self.dossier_local()
                 self.suppression_fichiers()
@@ -246,13 +252,11 @@ class GestionFichier:
             print(commande)
 
     def hebdomadaire(self):
-        if not os.path.isdir(self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire"):
-            os.makedirs(self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire/")
-
         self.path_hebdomadaire = (self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire/"
-                                 + "S" + str(self.numero_semaine) + "/")
-        os.makedirs(self.path_hebdomadaire)
-        self.copy_archives()
+                                  + "S" + str(self.numero_semaine) + "/")
+        if not os.path.isdir(self.path_hebdomadaire):
+            os.makedirs(self.path_hebdomadaire)
+            self.copy_archives()
 
     def copy_archives(self):
         commande = "tar -cpz --file {}mariadb_full_{}.tar.gz {}mariadb_full"\
@@ -278,6 +282,7 @@ class GestionFichier:
         commande = "mariabackup --backup --target_dir={}mariadb_inc{}/ --incremental-basedir={} --user={}" \
                    " --password={}  >/dev/null 2>&1".format(self.path_du_jour, self.indice_jour,
                                                             self.mariabd_full_path, self.db_user, self.db_passwd)
+
         self.message_log = "Information : Creation d'un backup incremental mariadb dans mariadb_inc{}"\
             .format(self.indice_jour)
         self.fichier_log()
@@ -291,6 +296,10 @@ class GestionFichier:
         self.mariadb_path_to_full()
         commande = "mariabackup --backup --target-dir={}mariadb_full/ --user={} --password={} >/dev/null 2>&1"\
             .format(self.path_du_jour, self.db_user, self.db_passwd)
+
+        self.nom_dir_mariabd = "{}mariadb_full/\n".format(self.path_du_jour)
+        self.creation_fichier_maria()
+
         self.message_log = "Information : Creation d'un backup full mariadb dans {}".format(self.mariabd_full_path)
         self.fichier_log()
 
@@ -335,23 +344,35 @@ class GestionFichier:
             self.message_log = "Erreur : Le dossier " + self.path_du_jour + " n'existe pas ou n'est pas accessible"
             self.fichier_log()
 
-    def creation_fichier(self):
-        contenu_fichier = self.nom_de_fichier + "\n"
+    def creation_fichier_quot(self):
+        contenu_fichier = self.nom_de_fichier + self.nom_dir_mariabd + "\n"
         fichier_resto = open(self.path_dossier_config + "quotidienne", "a")
         fichier_resto.write(contenu_fichier)
         fichier_resto.close()
 
+    def creation_fichier_maria(self):
+        contenu_fichier_maria = self.nom_dir_mariabd
+        mariadb_resto = open(self.path_dossier_config + "mariadb", "a")
+        mariadb_resto.write(contenu_fichier_maria)
+        mariadb_resto.close()
+
     def dossier_distant(self):
-        print(self.path_du_jour)
         sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
         sftp.makedirs(self.remote_base + self.path_du_jour)
         sftp.close()
         self.copy_pysftp()
 
-    def copy_pysftp(self):
+    def suppr_dossier_distant(self):
 
+        commande = "rm -R {}{}/quotidienne/{}/*".format(self.remote_base, str(self.dossier_annee), self.jour_semaine)
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(self.host_address, self.host_port, self.login_user, self.login_passwd)
+        ssh.exec_command(commande)
+
+    def copy_pysftp(self):
+        self.suppr_dossier_distant()
         sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
-        print(self.dossier_backup)
         sftp.put_r(self.dossier_backup, self.remote_base, preserve_mtime=True)
         sftp.close()
 
