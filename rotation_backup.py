@@ -53,21 +53,44 @@ class GestionFichier:
         self.mariabd_full_path = ""
         self.path_hebdomadaire = ""
         self.dic_rotation = {}
+        self.dic_users = {}
         self.path_local = os.getcwd()
-        self.db_user = "root"
-        self.db_passwd = "francis1965"
+        self.db_user = ""
+        self.db_passwd = ""
+        self.login_user = ""
+        self.login_passwd = ""
+        self.host_address = ""
 
         # Exécution des fonctions de base
         self.creation_dossier_config()
+        self.fichier_users()
         self.config_ini()
         self.derniere_execution()
-        self.copy_pysftp()
 
 # Creation des dossiers de configuration
     def creation_dossier_config(self):
         self.path_dossier_config = self.dossier_backup + "/" + self.dossier_config + "/"
         if not os.path.isdir(self.path_dossier_config):
             os.makedirs(self.path_dossier_config)
+
+    def fichier_users(self):
+        if not os.path.isfile("users.ini"):
+            contenu = "Login_user=\nLogin_passwd=\nDB_user=\nDB_passwd=\nHost_address="
+            print(contenu)
+            userini = open("users.ini", "w")
+            userini.write(contenu)
+            userini.close()
+
+        with open("users.ini", "r") as users_ini:
+            for ligne in users_ini:
+                key, valeur = ligne.strip().split("=")
+                self.dic_users[key] = valeur
+                self.dic_users.update(self.dic_users)
+            self.db_user = self.dic_users["DB_user"]
+            self.db_passwd = self.dic_users["DB_passwd"]
+            self.login_user = self.dic_users["Login_user"]
+            self.login_passwd = self.dic_users["Login_passwd"]
+            self.host_address = self.dic_users["Host_address"]
 
 # Creation du fichier config.ini pour la restauration
     def config_ini(self):
@@ -318,15 +341,19 @@ class GestionFichier:
 
     def dossier_distant(self):
         print(self.path_du_jour)
-        sftp = pysftp.Connection('192.168.1.60', username='root', password='francis1965')
+        sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
         sftp.makedirs("/var/" + self.path_du_jour)
         sftp.close()
 
     def copy_pysftp(self):
 
-        sftp = pysftp.Connection('192.168.1.60', username='root', password='francis1965')
+        sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
 
         sftp.close()
+
+    def initialisation(self):
+        if not os.path.isdir(self.dossier_backup):
+            return False
 
 
 test = GestionFichier()
