@@ -6,6 +6,7 @@
 # TODO : ajouter la préservation des acl sur les fichiers
 # TODO : Ajouter le suppression des dossiers de backup de mariadb full et incremental
 # TODO : ne pas oublier de copier les fichiers des configs pour la restauration !
+# TODO : Supprimer le fichier quotidienne apres un cycle d'une semaine
 
 
 import locale
@@ -340,7 +341,7 @@ class GestionFichier:
                 if pattern_dossier in element:
                     shutil.rmtree(self.path_du_jour + element)
 
-        except FileNotFoundError:
+        except IOError:
             self.message_log = "Erreur : Le dossier " + self.path_du_jour + " n'existe pas ou n'est pas accessible"
             self.fichier_log()
 
