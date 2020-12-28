@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# TODO: gérer un fichier pour la restauration dans le dossier source quotidienne - Fait ajouter les dossiers sources
-# TODO: gérer la sauvegare complète et incrémentielle de mariadb avec maribackup
-# TODO: vérifier la sauvegarde complète et générer les fichiers tar correspondants
-# TODO : ajouter la préservation des acl sur les fichiers
-# TODO : Ajouter le suppression des dossiers de backup de mariadb full et incremental
 # TODO : ne pas oublier de copier les fichiers des configs pour la restauration !
 # TODO : Supprimer le fichier quotidienne apres un cycle d'une semaine
-
+# TODO : Coriger la copie SFTP des données (le dossier source et base est incorrect
 
 import locale
 import datetime
@@ -52,7 +47,7 @@ class GestionFichier:
         self.dossier_source = "/var/www/html/www.projet9-wordpress.com " \
                               "/etc/apache2/sites-available/www.projet9-wordpress.com.conf " \
                               "/etc/apache2/sites-enabled/www.projet9-wordpress.com.conf"
-        self.remote_base = "/var/backup/"
+        self.remote_base = "/var/rotation_backup/backup/"
         self.mariabd_full_path = ""
         self.nom_dir_mariabd = ""
         self.path_hebdomadaire = ""
@@ -372,6 +367,7 @@ class GestionFichier:
         ssh.exec_command(commande)
 
     def copy_pysftp(self):
+        print(self.dossier_backup + " vers " + self.remote_base)
         self.suppr_dossier_distant()
         sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
         sftp.put_r(self.dossier_backup, self.remote_base, preserve_mtime=True)

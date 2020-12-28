@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # TODO : Copier le fichier config.ini à la racine pendant lors du transfert distant
 
+
 import locale
-import os
 import sys
 import paramiko
 import pysftp
@@ -17,6 +17,13 @@ else:
 class Restauration:
     def __init__(self):
 
+        self.dossier_cible = "/var/rotation_backup"
+        self.dossier_mariadb = "/var/rotation_backup"
+        self.host_address = "192.168.1.52"
+        self.host_port = 22
+        self.login_user = "root"
+        self.login_passwd = "francis1965"
+
         self.liste = []
         self.key = 0
         self.en_clair = ""
@@ -25,12 +32,8 @@ class Restauration:
         self.liste_mariadb = []
         self.chemin_config = ""
         self.dossier_source = ""
-        self.dossier_cible = "/var/rotation_backup"
         self.mariadb = ""
-        self.host_address = "192.168.1.52"
-        self.host_port = 22
-        self.login_user = "root"
-        self.login_passwd = "francis1965"
+        self.commande_tar = ""
         self.stop_mariadb = ""
         self.supp_mysql = ""
         self.prepa_mariadb = ""
@@ -43,14 +46,13 @@ class Restauration:
         self.lecture_mariadb()
         self.lecture_quotidienne()
 
-
     def copie_backup(self):
         self.dossier_cible = self.dossier_cible + "/" + self.dossier_source
         sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
         sftp.makedirs(self.dossier_cible)
         sftp.put_r(self.dossier_source, self.dossier_cible, preserve_mtime=True)
         sftp.close()
-        print self.dossier_source + " vers " + self.dossier_cible
+        print "copie de : " + self.dossier_source + " vers " + self.dossier_cible
 
     def lecture_config(self):
 
@@ -72,7 +74,6 @@ class Restauration:
 
         with open(self.chemin_config + "quotidienne", "r") as resto_quot:
             self.liste = dict(enumerate(line.strip() for line in resto_quot))
-            print(len(self.liste))
             print(" N°   Jour  Date        Heure      Complète / Incrementielle")
         for i in range(0, len(self.liste)):
             self.mariadb = str(self.liste_mariadb[i]).split("/")
@@ -120,14 +121,11 @@ class Restauration:
     def resto_tar(self):
 
         for y in range(0, int(self.key) + 1):
-            fichier_tar = (self.dic_config["Dossier_cible"] + str(self.jour[3]) + "/" + "quotidienne/" + str(self.jour[1]) + "/" + str(self.liste[y]))
+            fichier_tar = (self.dossier_cible + str(self.jour[3]) + "/" + "quotidienne/" + str(self.jour[1]) + "/"
+                           + str(self.liste[y]))
 
-            commande = "tar -vxzf " + fichier_tar + " -C /"
-
-            if sys.platform.startswith("linux"):
-                os.system(commande)
-            else:
-                print commande
+            self.commande_tar = "tar -vxzf " + fichier_tar + " -C /"
+            self.execution_distante(self.commande_tar)
         self.resto_mariadb()
 
     def resto_mariadb(self):
@@ -138,78 +136,66 @@ class Restauration:
 
         print("Suppresion du dossier mysql")
         self.supp_mysql = "rm -R /var/lib/mysql/"
+        self.execution_distante(self.supp_mysql)
+        print self.supp_mysql
 
-        if sys.platform.startswith("linux"):
-            os.system(self.supp_mysql)
-        else:
-            print self.supp_mysql
-
-        if int(self.key) <= 0:
+        if int(self.key) == 0:
             print("FULL")
 
             print("Préparation de la restauration de la BDD")
-            self.prepa_mariadb = "mariabackup --prepare --target-dir={}".format(self.liste_mariadb[int(self.key)])
-
-            if sys.platform.startswith("linux"):
-                os.system(self.prepa_mariadb)
-            else:
-                print self.prepa_mariadb
+            print(self.dossier_cible)
+            self.prepa_mariadb = "mariabackup --prepare --target-dir={}/{}"\
+                .format(self.dossier_mariadb, self.liste_mariadb[int(self.key)])
+            self.execution_distante(self.prepa_mariadb)
+            print self.prepa_mariadb
 
             print("Restauration de la BDD")
-            self.restauration_mariadb = "mariabackup --copy-back --target-dir={}".format(self.liste_mariadb[int(self.key)])
-
-            if sys.platform.startswith("linux"):
-                os.system(self.restauration_mariadb)
-            else:
-                print self.restauration_mariadb
+            self.restauration_mariadb = "mariabackup --copy-back --target-dir={}/{}"\
+                .format(self.dossier_mariadb, self.liste_mariadb[int(self.key)])
+            self.execution_distante(self.restauration_mariadb)
+            print self.restauration_mariadb
 
         else:
             print("INCREMENTAL")
             print("Préparation de la restauration de la BDD")
-            self.prepa_mariadb = "mariabackup --prepare --target-dir={}".format(self.liste_mariadb[0])
-
-            if sys.platform.startswith("linux"):
-                os.system(self.prepa_mariadb)
-            else:
-                print self.prepa_mariadb
+            self.prepa_mariadb = "mariabackup --prepare --target-dir={}/{}"\
+                .format(self.dossier_mariadb, self.liste_mariadb[0])
+            self.execution_distante(self.prepa_mariadb)
+            print self.prepa_mariadb
 
             print"Synchronisation des incréments"
             for y in range(1, int(self.key) + 1):
 
-                self.synchro_mariadb = "mariabackup --prepare --target-dir={} --incremental-dir={}"\
-                    .format(self.liste_mariadb[0], self.liste_mariadb[y])
-
-                if sys.platform.startswith("linux"):
-                    os.system(self.synchro_mariadb)
-                else:
-                    print self.synchro_mariadb
+                self.synchro_mariadb = "mariabackup --prepare --target-dir={}/{} --incremental-dir={}/{}"\
+                    .format(self.dossier_mariadb, self.liste_mariadb[0], self.dossier_mariadb, self.liste_mariadb[y])
+                self.execution_distante(self.synchro_mariadb)
+                print self.synchro_mariadb
 
             print("Restauration de la BDD")
-            self.restauration_mariadb = "mariabackup --copy-back --target-dir={}".format(self.liste_mariadb[0])
-
-            if sys.platform.startswith("linux"):
-                os.system(self.restauration_mariadb)
-            else:
-                print self.restauration_mariadb
+            self.restauration_mariadb = "mariabackup --copy-back --target-dir={}/{}"\
+                .format(self.dossier_mariadb, self.liste_mariadb[0])
+            self.execution_distante(self.restauration_mariadb)
+            print self.restauration_mariadb
 
         print("Correction des ACL")
         self.acl_mariadb = "chown -R mysql:mysql /var/lib/mysql/"
-
-        if sys.platform.startswith("linux"):
-            os.system(self.acl_mariadb)
-        else:
-            print self.acl_mariadb
+        self.execution_distante(self.acl_mariadb)
+        print self.acl_mariadb
 
         print("redémarrage de mariadb")
         self.start_mariadb = "systemctl start mariadb"
         self.execution_distante(self.start_mariadb)
         print self.start_mariadb
 
-    def execution_distante(self,commande):
+    def execution_distante(self, commande):
+
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(self.host_address, self.host_port, self.login_user, self.login_passwd)
-        ssh.exec_command(commande)
+        stdin, stdout, stderr = ssh.exec_command(commande)
+        lines = stderr.readlines()
+        for err_msg in range(len(lines)):
+            print(lines[err_msg])
 
 
 test = Restauration()
