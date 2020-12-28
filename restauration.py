@@ -11,6 +11,7 @@ if sys.platform.startswith("darwin"):
 else:
     locale.setlocale(locale.LC_ALL, 'fr_FR.utf8')
 
+
 class Restauration:
     def __init__(self):
 
@@ -41,8 +42,6 @@ class Restauration:
         with open(self.chemin_backup + "mariadb", "r") as mariadb_file:
             self.liste_mariadb = mariadb_file.read().splitlines()
 
-
-
     def lecture_quotidienne(self):
 
         with open(self.chemin_backup + "quotidienne", "r") as resto_quot:
@@ -59,23 +58,19 @@ class Restauration:
 
     def restauration(self):
         la_condition = True
-        # while la_condition:
-            # lakey = ("Indiquez le numéro de sauvegarde à restaurer, 'q' pour quitter : ")
-            # self.key = int(lakey)
-
-            # try:
-            #     if int(self.key) > len(self.liste) - 1:
-            #         print("au dessus")
-            #         la_condition = True
-            #     else:
-            #         la_condition = False
-            # except ValueError:
-            #     la_condition = True
-            #
-            # if self.key.lower() == "q":
-            #     la_condition = False
-            #     print("on quitte")
-            #     quit()
+        while la_condition:
+            self.key = raw_input("Indiquez le numéro de sauvegarde à restaurer, 'q' pour quitter : ")
+            try:
+                if int(self.key) > len(self.liste) - 1:
+                    print("au dessus")
+                    la_condition = True
+                else:
+                    la_condition = False
+            except ValueError:
+                la_condition = True
+                if self.key.lower() == "q":
+                    la_condition = False
+                    quit()
 
         print("on fait le job")
 
@@ -85,9 +80,9 @@ class Restauration:
 
         onyva = True
         while onyva:
-            #print("Restauration du fichier : " + str(self.liste[int(self.key)]) + str(self.mariadb[int(self.key)]))
+
             print("Restauration de : " + str(self.liste[int(self.key)]) + "\t" + str(self.liste_mariadb[int(self.key)]))
-            confirmation = input("Etes vous sur de vouloir continuer  O/N - ? : ")
+            confirmation = raw_input("Etes vous sur de vouloir continuer  O/N - ? : ")
             if confirmation == "O":
                 onyva = False
             if confirmation == "N":
@@ -97,6 +92,7 @@ class Restauration:
         #     print(self.dic_config["Dossier_cible"] + str(self.jour[3]) + "/" + str(self.jour[1]) + "/"
         #           + str(self.liste[y]) + "\t" + self.liste_mariadb[y])
         self.resto_tar()
+
     def resto_tar(self):
 
         for y in range(0, int(self.key) + 1):
@@ -108,7 +104,44 @@ class Restauration:
             if sys.platform.startswith("linux"):
                 os.system(commande)
             else:
-                print(commande)
+                print commande
+        self.resto_mariadb()
+
+    def resto_mariadb(self):
+        print("Arret du service mariadb")
+        stop_mariadb = "systemctl stop mariadb"
+        print(stop_mariadb)
+        print("Suppresion du dossier mysql")
+        supp_mysql = "rm -R /var/lib/mysql/"
+        print(supp_mysql)
+        if int(self.key) <= 0:
+            print("FULL")
+            print("Préparation de la restauration de la BDD")
+            prepa_mariadb = "mariabackup --prepare --target-dir={}".format(self.liste_mariadb[int(self.key)])
+            print(prepa_mariadb)
+            print("Restauration de la BDD")
+            resto_mariadb = "mariabackup --copy-back --target-dir={}".format(self.liste_mariadb[int(self.key)])
+            print(resto_mariadb)
+        else:
+            print("INCREMENTAL")
+            print("Préparation de la restauration de la BDD")
+            prepa_mariadb = "mariabackup --prepare --target-dir={}".format(self.liste_mariadb[0])
+            print(prepa_mariadb)
+            print"Synchronisation des incréments"
+            for y in range(1, int(self.key) + 1):
+                synchro_mariadb = "mariabackup --prepare --target-dir={} --incremental-dir={}"\
+                    .format(self.liste_mariadb[0], self.liste_mariadb[y])
+                print(synchro_mariadb)
+            print("Restauration de la BDD")
+            resto_mariadb = "mariabackup --copy-back --target-dir={}".format(self.liste_mariadb[0])
+            print(resto_mariadb)
+
+        print("Correction des ACL")
+        acl_mariadb = "chown -R mysql:mysql /var/lib/mysql/"
+        print(acl_mariadb)
+        print("redémarrage de mariadb")
+        start_mariadb = "systemctl start mariadb"
+        print(start_mariadb)
 
 
 test = Restauration()
