@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# TODO : Copier le fichier config.ini à la racine pendant lors du transfert distant
 
 
 import locale

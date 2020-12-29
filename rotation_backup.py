@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# TODO : ne pas oublier de copier les fichiers des configs pour la restauration !
-# TODO : Supprimer le fichier quotidienne apres un cycle d'une semaine
-# TODO : Coriger la copie SFTP des données (le dossier source et base est incorrect
+# TODO : ne pas oublier de copier les fichiers des configs pour la restauration ! -- FAIT
+# TODO : Supprimer le fichier quotidienne apres un cycle d'une semaine -- FAIT
+# TODO : Corriger la copie SFTP des données (le dossier source et base sont incorrects) -- FAIT
 
 import locale
 import datetime
@@ -127,9 +127,10 @@ class GestionFichier:
                 self.fichier_derniere_exec()
 
             if self.jour_de_lannee - self.exec_jour == 1:
-                # Sauvegarde incrementielle de la veille voir backup()
+                # Sauvegarde incrementielle de la veille --> backup()
 
                 if int(self.dic_rotation["indice"]) == 7:
+                    self.cycle_quotidien()
                     self.indice = 1
                     self.type = "C"
                 else:
@@ -159,8 +160,8 @@ class GestionFichier:
                 self.fichier_derniere_exec()
 
             if self.jour_de_lannee - self.exec_jour > 7:
-                print("plus d'une semaine")
 
+                self.cycle_quotidien()
                 self.type = "C"
                 self.indice = 1
                 self.indice_jour = 0
@@ -247,7 +248,15 @@ class GestionFichier:
         else:
             print(commande)
 
+    def cycle_quotidien(self):
+        # suppression du contenu des fichiers de sauvegardes quotidiennes
+        fichier_resto = open(self.path_dossier_config + "quotidienne", "w")
+        fichier_resto.close()
+        mariadb_resto = open(self.path_dossier_config + "mariadb", "w")
+        mariadb_resto.close()
+
     def hebdomadaire(self):
+
         self.path_hebdomadaire = (self.dossier_backup + "/" + self.dossier_annee + "/" + "hebdomadaire/"
                                   + "S" + str(self.numero_semaine) + "/")
         if not os.path.isdir(self.path_hebdomadaire):
@@ -317,7 +326,6 @@ class GestionFichier:
                             + self.jour_semaine + "/"
         try:
             os.makedirs(self.path_du_jour)
-            #self.dossier_distant()
             self.message_log = "Information : creation du dossier " + self.jour_semaine
             self.fichier_log()
         except OSError:
@@ -341,7 +349,7 @@ class GestionFichier:
             self.fichier_log()
 
     def creation_fichier_quot(self):
-        contenu_fichier = self.nom_de_fichier + self.nom_dir_mariabd + "\n"
+        contenu_fichier = self.nom_de_fichier + "\n"
         fichier_resto = open(self.path_dossier_config + "quotidienne", "a")
         fichier_resto.write(contenu_fichier)
         fichier_resto.close()
@@ -351,12 +359,6 @@ class GestionFichier:
         mariadb_resto = open(self.path_dossier_config + "mariadb", "a")
         mariadb_resto.write(contenu_fichier_maria)
         mariadb_resto.close()
-
-    def dossier_distant(self):
-        sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
-        sftp.makedirs(self.remote_base + self.path_du_jour)
-        sftp.close()
-        self.copy_pysftp()
 
     def suppr_dossier_distant(self):
 
@@ -370,6 +372,7 @@ class GestionFichier:
         print(self.dossier_backup + " vers " + self.remote_base)
         self.suppr_dossier_distant()
         sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
+        sftp.makedirs(self.remote_base)
         sftp.put_r(self.dossier_backup, self.remote_base, preserve_mtime=True)
         sftp.close()
 
