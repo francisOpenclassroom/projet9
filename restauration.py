@@ -18,7 +18,7 @@ class Restauration:
 
         self.dossier_cible = "/var/rotation_backup"
         self.dossier_mariadb = "/var/rotation_backup"
-        self.host_address = "192.168.1.52"
+        self.host_address = "192.168.1.70"
         self.host_port = 22
         self.login_user = "root"
         self.login_passwd = "francis1965"
@@ -40,6 +40,7 @@ class Restauration:
         self.synchro_mariadb = ""
         self.acl_mariadb = ""
         self.start_mariadb = ""
+        self.restart_host = ""
         self.lecture_config()
         self.copie_backup()
         self.lecture_mariadb()
@@ -181,10 +182,15 @@ class Restauration:
         self.execution_distante(self.acl_mariadb)
         print self.acl_mariadb
 
-        print("redémarrage de mariadb")
+        print("démarrage de mariadb")
         self.start_mariadb = "systemctl start mariadb"
         self.execution_distante(self.start_mariadb)
         print self.start_mariadb
+
+        print("reboot")
+        self.restart_host = "reboot now"
+        self.execution_distante(self.restart_host)
+        print self.restart_host
 
     def execution_distante(self, commande):
 

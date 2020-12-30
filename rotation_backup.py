@@ -236,7 +236,6 @@ class GestionFichier:
                 self.suppression_fichiers()
                 self.tar()
                 self.mariadb_increment()
-            print("on copie l'increment du jour")
 
     def tar(self):
 
@@ -369,9 +368,10 @@ class GestionFichier:
         ssh.exec_command(commande)
 
     def copy_pysftp(self):
-        print(self.dossier_backup + " vers " + self.remote_base)
         self.suppr_dossier_distant()
-        sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd)
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None
+        sftp = pysftp.Connection(self.host_address, username=self.login_user, password=self.login_passwd, cnopts=cnopts)
         sftp.makedirs(self.remote_base)
         sftp.put_r(self.dossier_backup, self.remote_base, preserve_mtime=True)
         sftp.close()
