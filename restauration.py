@@ -156,7 +156,7 @@ class Restauration:
             print self.restauration_mariadb
 
         else:
-            print("INCREMENTAL")
+            print("INCREMENTALE")
             print("Préparation de la restauration de la BDD")
             self.prepa_mariadb = "mariabackup --prepare --target-dir={}/{}"\
                 .format(self.dossier_mariadb, self.liste_mariadb[0])
@@ -188,7 +188,7 @@ class Restauration:
         print self.start_mariadb
 
         print("reboot")
-        self.restart_host = "reboot now"
+        self.restart_host = "reboot"
         self.execution_distante(self.restart_host)
         print self.restart_host
 
@@ -198,9 +198,9 @@ class Restauration:
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(self.host_address, self.host_port, self.login_user, self.login_passwd)
         stdin, stdout, stderr = ssh.exec_command(commande)
-        lines = stderr.readlines()
-        for err_msg in range(len(lines)):
-            print(lines[err_msg])
+        lignes = stderr.readlines()
+        for err_msg in range(len(lignes)):
+            print(lignes[err_msg])
 
 
 test = Restauration()
