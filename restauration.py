@@ -5,6 +5,8 @@ import locale
 import sys
 import paramiko
 import pysftp
+import linecache
+import os
 
 if sys.platform.startswith("darwin"):
 
@@ -16,12 +18,14 @@ else:
 class Restauration:
     def __init__(self):
 
-        self.dossier_cible = "/var/rotation_backup"
-        self.dossier_mariadb = "/var/rotation_backup"
-        self.host_address = "192.168.1.70"
-        self.host_port = 22
-        self.login_user = "root"
-        self.login_passwd = "francis1965"
+        # "/var/rotation_backup
+        self.dossier_cible = ""
+        # "/var/rotation_backup"
+        self.dossier_mariadb = ""
+        self.host_address = ""
+        self.host_port = 0
+        self.login_user = ""
+        self.login_passwd = ""
 
         self.liste = []
         self.key = 0
@@ -41,10 +45,32 @@ class Restauration:
         self.acl_mariadb = ""
         self.start_mariadb = ""
         self.restart_host = ""
+        self.dic_users = {}
+        self.resto_ini()
         self.lecture_config()
         self.copie_backup()
         self.lecture_mariadb()
         self.lecture_quotidienne()
+
+    def resto_ini(self):
+        if not os.path.isfile("resto.ini"):
+            contenu = "Login_user=\nLogin_passwd=\nHost_address=\nHost_port=\ndossier_cible=\ndossier_mariadb="
+            restoini = open("resto.ini", "w")
+            restoini.write(contenu)
+            restoini.close()
+            print("Le fichier ini est absent, merci de le renseigner")
+            quit()
+        with open("resto.ini", "r") as resto_ini:
+            for ligne in resto_ini:
+                key, valeur = ligne.strip().split("=")
+                self.dic_users[key] = valeur
+                self.dic_users.update(self.dic_users)
+            self.login_user = self.dic_users["Login_user"]
+            self.login_passwd = self.dic_users["Login_passwd"]
+            self.host_address = self.dic_users["Host_address"]
+            self.host_port = self.dic_users["Host_port"]
+            self.dossier_cible = self.dic_users["dossier_cible"]
+            self.dossier_mariadb = self.dic_users["dossier_mariadb"]
 
     def copie_backup(self):
         self.dossier_cible = self.dossier_cible + "/" + self.dossier_source
@@ -121,9 +147,10 @@ class Restauration:
     def resto_tar(self):
 
         for y in range(0, int(self.key) + 1):
-            fichier_tar = (self.dossier_cible + str(self.jour[3]) + "/" + "quotidienne/" + str(self.jour[1]) + "/"
+            lignes = linecache.getline(self.chemin_config + "quotidienne", y + 1)
+            fichier_tar = (self.dossier_cible + lignes.split("_")[3] + "/" + "quotidienne/" + lignes.split("_")[1] + "/"
                            + str(self.liste[y]))
-
+            print "restauration de : " + fichier_tar
             self.commande_tar = "tar -vxzf " + fichier_tar + " -C /"
             self.execution_distante(self.commande_tar)
         self.resto_mariadb()
@@ -165,7 +192,9 @@ class Restauration:
 
             print"Synchronisation des incréments"
             for y in range(1, int(self.key) + 1):
-
+                # print y
+                # lignes = linecache.getline(self.chemin_config + "mariadb", y + 1)
+                # print lignes
                 self.synchro_mariadb = "mariabackup --prepare --target-dir={}/{} --incremental-dir={}/{}"\
                     .format(self.dossier_mariadb, self.liste_mariadb[0], self.dossier_mariadb, self.liste_mariadb[y])
                 self.execution_distante(self.synchro_mariadb)
@@ -203,4 +232,4 @@ class Restauration:
             print(lignes[err_msg])
 
 
-test = Restauration()
+resto = Restauration()

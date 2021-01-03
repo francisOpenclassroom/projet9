@@ -312,7 +312,13 @@ class GestionFichier:
     # Génération des commandes de sauvegarde incrementielle mariadb
     def mariadb_increment(self):
         self.mariadb_path_to_full()
-        commande = "mariabackup --backup --target_dir={}mariadb_inc{}/ --incremental-basedir={} --user={}" \
+        if self.indice_jour == 0:
+            commande = "mariabackup --backup --target_dir={}mariadb_inc/ --incremental-basedir={} --user={}" \
+                       " --password={}  >/dev/null 2>&1".format(self.path_du_jour, self.mariabd_full_path, self.db_user,
+                                                                self.db_passwd)
+
+        else:
+            commande = "mariabackup --backup --target_dir={}mariadb_inc{}/ --incremental-basedir={} --user={}" \
                    " --password={}  >/dev/null 2>&1".format(self.path_du_jour, self.indice_jour,
                                                             self.mariabd_full_path, self.db_user, self.db_passwd)
 
@@ -350,6 +356,7 @@ class GestionFichier:
             la_liste = (str(full_bckup[0]).split("_"))
             self.mariabd_full_path = self.dossier_backup + "/" + str(self.dossier_annee) + "/" + "quotidienne" + "/"\
                                      + str(la_liste[1]) + "/mariadb_full/"
+
     # Création et gestion des dossiers locaux
     def dossier_local(self):
         self.path_du_jour = self.dossier_backup + "/" + str(self.dossier_annee) + "/" + "quotidienne/"\
